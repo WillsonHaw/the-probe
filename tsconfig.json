@@ -1,0 +1,29 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": "./",
+    "target": "es2018",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "jsx": "preserve",
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "skipLibCheck": false,
+    "sourceMap": true,
+    "strict": true,
+    "lib": ["es2015", "es2016", "es2017", "dom"],
+    "typeRoots": ["node_modules/@types", "typings"],
+    "paths": {
+      "wpe-lightning": ["typings/wpe-lightning"],
+      "~/*": ["packages/*", "platforms/*"]
+    }
+  },
+  "include": ["./src/**/*.ts"]
+}
