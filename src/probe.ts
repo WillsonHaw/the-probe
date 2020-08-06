@@ -4,6 +4,8 @@ import { SingleBar } from 'cli-progress';
 import { promisify } from 'util';
 import { concurrent } from './helpers/concurrent';
 import { Stream } from './types/Stream';
+import { Container } from './types/Container';
+import { ProbeResult } from './types/ProbeResult';
 
 const exec = promisify(execFn);
 
@@ -11,15 +13,58 @@ interface Matchers {
   video?: Stream;
   audio?: Stream;
   subtitle?: Stream;
+  container?: Container;
+}
+
+function compareObjects<T, K extends keyof T>(
+  obj: T,
+  compareProps: Partial<T>
+): boolean {
+  return Object.keys(compareProps).every((key) => {
+    let prop = obj[key as K];
+    let match = compareProps[key as K];
+
+    if (prop == null) {
+      return false;
+    }
+
+    while (typeof prop === 'object' && typeof match === 'object') {
+      return compareObjects(prop as T[K], match as Partial<T[K]>);
+    }
+
+    if (typeof match === 'string' && match[0] === '>') {
+      if (match[1] === '=') {
+        return parseFloat(String(prop)) >= parseFloat(match.slice(2));
+      }
+
+      return parseFloat(String(prop)) > parseFloat(match.slice(1));
+    }
+
+    if (typeof match === 'string' && match[0] === '<') {
+      if (match[1] === '=') {
+        return parseFloat(String(prop)) <= parseFloat(match.slice(2));
+      }
+
+      return parseFloat(String(prop)) < parseFloat(match.slice(1));
+    }
+
+    if (typeof match === 'string' && match[0] === '~') {
+      return String(prop)
+        .toLocaleLowerCase()
+        .includes(match.slice(1).toLocaleLowerCase());
+    }
+
+    return (
+      String(prop).toLocaleLowerCase() === String(match).toLocaleLowerCase()
+    );
+  });
 }
 
 function probeStreams(
   type: keyof Matchers,
   streams: Stream[],
-  matchers: Matchers
+  matcher?: Stream
 ): boolean {
-  const matcher = matchers[type];
-
   if (!matcher) {
     return true;
   }
@@ -28,17 +73,15 @@ function probeStreams(
     (stream) => stream.codec_type === type
   );
 
-  return filteredStreams.some((stream) =>
-    Object.keys(matcher).every((key) => {
-      const prop = stream[key as keyof Stream];
-      const match = matcher[key as keyof Stream];
+  return filteredStreams.some((stream) => compareObjects(stream, matcher));
+}
 
-      return (
-        prop &&
-        String(prop).toLocaleLowerCase() === String(match).toLocaleLowerCase()
-      );
-    })
-  );
+function probeContainer(container: Container, matcher?: Container): boolean {
+  if (!matcher) {
+    return true;
+  }
+
+  return compareObjects(container, matcher);
 }
 
 async function probeFile(file: string, matchers: Matchers): Promise<boolean> {
@@ -52,12 +95,13 @@ async function probeFile(file: string, matchers: Matchers): Promise<boolean> {
 
   try {
     const execResult = await exec(args.join(' '));
-    const streams: Stream[] = JSON.parse(execResult.stdout).streams;
+    const result: ProbeResult = JSON.parse(execResult.stdout);
 
     return (
-      probeStreams('video', streams, matchers) &&
-      probeStreams('audio', streams, matchers) &&
-      probeStreams('subtitle', streams, matchers)
+      probeStreams('video', result.streams, matchers.video) &&
+      probeStreams('audio', result.streams, matchers.audio) &&
+      probeStreams('subtitle', result.streams, matchers.subtitle) &&
+      probeContainer(result.format, matchers.container)
     );
   } catch (err) {
     console.error(err);

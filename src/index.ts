@@ -4,6 +4,7 @@ import getArgs from './getArgs';
 import { getFiles } from './getFiles';
 import { probe } from './probe';
 import { Stream } from './types/Stream';
+import { Container } from './types/Container';
 
 export async function main(): Promise<void> {
   const {
@@ -14,10 +15,11 @@ export async function main(): Promise<void> {
     'max-results': maxResults,
     _: path,
     extensions,
+    container,
     out,
   } = getArgs();
 
-  if (!video && !audio && !subtitle) {
+  if (!video && !audio && !subtitle && !container) {
     console.error(
       'At least one video, audio, or subtitle property must be specified!'
     );
@@ -37,6 +39,7 @@ export async function main(): Promise<void> {
       video: video as Stream,
       audio: audio as Stream,
       subtitle: subtitle as Stream,
+      container: container as Container,
     },
     processes,
     maxResults

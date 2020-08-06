@@ -22,12 +22,9 @@ Options:
                      as the comparison value.
   --subtitle, -s     Subtitle properties to match. Use a dot plus the property
                      name as the comparison value.
-
-Examples:
-  node index -x avi mp4 -v.codec_name divx  Finds all divx videos in avi and mp4
-                                            containers
-  node index -x mkv -v.codec_name h264      Finds all h264 main videos with eac3
-  -v.profile main -a.codec_name eac3        audio in an mkv container
+  --container, -c    Container properties to match (the "format" object of
+                     ffprobe). Use a dot plus the property name as the
+                     comparison value
 ```
 
 ## Examples
@@ -39,3 +36,15 @@ Finds all hevc videos in avi and mp4 containers:
 Find all h264 main videos with eac3 audio in an mkv container:
 
 `node index -x mkv -v.codec_name h264 -v.profile main -a.codec_name eac3 [PATH_TO_VIDEOS_FOLDER]`
+
+Finds all mkv h264 videos with width less than 1920
+
+`node index -x mkv -v.codec_name h264 -v.width "<1920" [PATH_TO_VIDEOS_FOLDER]`
+
+Finds all mp4 h264 720p or higher videos
+
+`node index -x mp4 -v.codec_name h264 -v.height ">=720" [PATH_TO_VIDEOS_FOLDER]`
+
+Finds all mkv videos that was encoded with libmatroska
+
+`node index -x mkv -c.tags.encoder "~libmatroska" [PATH_TO_VIDEOS_FOLDER]`

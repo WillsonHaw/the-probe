@@ -43,6 +43,11 @@ export default function getArgs() {
       description:
         'Subtitle properties to match. Use a dot plus the property name as the comparison value.',
     })
+    .option('container', {
+      alias: 'c',
+      description:
+        'Container properties to match (the "format" object of ffprobe). Use a dot plus the property name as the comparison value',
+    })
     .example(
       'node $0 -x avi,mp4 -v.codec_name divx [PATH_TO_VIDEOS_FOLDER]',
       'Finds all divx videos in avi and mp4 containers'
