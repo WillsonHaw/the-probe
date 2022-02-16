@@ -5,7 +5,7 @@ import { promisify } from 'util';
 import { concurrent } from './helpers/concurrent';
 import { Stream } from './types/Stream';
 import { Container } from './types/Container';
-import { ProbeResult } from './types/ProbeResult';
+import { FFProbeResult } from './types/FFProbeResult';
 
 const exec = promisify(execFn);
 
@@ -14,6 +14,13 @@ interface Matchers {
   audio?: Stream;
   subtitle?: Stream;
   container?: Container;
+}
+
+export interface ProbeResult {
+  file: string;
+  audio?: number;
+  video?: number;
+  subtitle?: number;
 }
 
 function compareObjects<T, K extends keyof T>(
@@ -54,6 +61,13 @@ function compareObjects<T, K extends keyof T>(
         .includes(match.slice(1).toLocaleLowerCase());
     }
 
+    if (typeof match === 'string' && match[0] === '!') {
+      return (
+        String(prop).toLocaleLowerCase() !==
+        String(match.slice(1)).toLocaleLowerCase()
+      );
+    }
+
     return (
       String(prop).toLocaleLowerCase() === String(match).toLocaleLowerCase()
     );
@@ -64,16 +78,16 @@ function probeStreams(
   type: keyof Matchers,
   streams: Stream[],
   matcher?: Stream
-): boolean {
+): number | undefined {
   if (!matcher) {
-    return true;
+    return undefined;
   }
 
   const filteredStreams = streams.filter(
     (stream) => stream.codec_type === type
   );
 
-  return filteredStreams.some((stream) => compareObjects(stream, matcher));
+  return filteredStreams.filter((stream) => compareObjects(stream, matcher)).length;
 }
 
 function probeContainer(container: Container, matcher?: Container): boolean {
@@ -84,7 +98,7 @@ function probeContainer(container: Container, matcher?: Container): boolean {
   return compareObjects(container, matcher);
 }
 
-async function probeFile(file: string, matchers: Matchers): Promise<boolean> {
+async function probeFile(file: string, matchers: Matchers): Promise<ProbeResult | undefined> {
   const args = [
     'ffprobe',
     '-print_format json',
@@ -95,17 +109,26 @@ async function probeFile(file: string, matchers: Matchers): Promise<boolean> {
 
   try {
     const execResult = await exec(args.join(' '));
-    const result: ProbeResult = JSON.parse(execResult.stdout);
+    const result: FFProbeResult = JSON.parse(execResult.stdout);
 
-    return (
-      probeStreams('video', result.streams, matchers.video) &&
-      probeStreams('audio', result.streams, matchers.audio) &&
-      probeStreams('subtitle', result.streams, matchers.subtitle) &&
-      probeContainer(result.format, matchers.container)
-    );
+    const videoProbeResult = probeStreams('video', result.streams, matchers.video);
+    const audioProbeResult = probeStreams('audio', result.streams, matchers.audio);
+    const subtitleProbeResult = probeStreams('subtitle', result.streams, matchers.subtitle);
+
+    const probeHasResults = probeContainer(result.format, matchers.container) &&
+      (videoProbeResult == null || videoProbeResult > 0) &&
+      (audioProbeResult == null || audioProbeResult > 0) &&
+      (subtitleProbeResult == null || subtitleProbeResult > 0);
+
+    return probeHasResults ? {
+      file,
+      video: videoProbeResult,
+      audio: result.streams.filter(s => s.codec_type === 'audio').length,
+      subtitle: subtitleProbeResult
+    } : undefined;
   } catch (err) {
     console.error(err);
-    return false;
+    return undefined;
   }
 }
 
@@ -114,14 +137,14 @@ export async function probe(
   matchers: Matchers,
   numProcesses: number,
   maxCount = Infinity
-): Promise<string[]> {
+): Promise<ProbeResult[]> {
   const bar = new SingleBar({
     format:
       'Progress: ' +
       colors.cyan('{bar}') +
       ' | {percentage}% | {value}/{total} files probed | Found: {foundCount} ',
   });
-  const results: string[] = [];
+  const results: ProbeResult[] = [];
   let foundCount = 0;
   let progress = 0;
 
@@ -140,7 +163,7 @@ export async function probe(
       if (result && foundCount < maxCount) {
         foundCount++;
 
-        results.push(file);
+        results.push(result);
 
         bar.update(progress, { foundCount });
       }

@@ -47,9 +47,27 @@ export async function main(): Promise<void> {
 
   console.log(`Found ${colors.green(results.length.toString())} results`);
 
+  let resultString = results.reduce((acc, result) => {
+    acc += `${result.file}\n`;
+
+    if (result.audio) {
+      acc += `  ${result.audio} matching audio stream${result.audio > 1 ? 's' : ''}\n`
+    }
+
+    if (result.video) {
+      acc += `  ${result.video} matching video stream${result.video > 1 ? 's' : ''}\n`
+    }
+
+    if (result.subtitle) {
+      acc += `  ${result.subtitle} matching subtitle stream${result.subtitle > 1 ? 's' : ''}\n`
+    }
+
+    return acc;
+  }, '');
+
   if (out) {
-    writeFileSync(out, results.join('\n'), 'utf8');
+    writeFileSync(out, resultString, 'utf8');
   } else {
-    console.log('\n', results.join('\n'));
+    console.log('\n', resultString);
   }
 }

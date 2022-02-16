@@ -1,4 +1,5 @@
 export interface Stream {
+  count: number;
   index: number;
   codec_name: string;
   codec_long_name: string;

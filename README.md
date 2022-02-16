@@ -39,12 +39,16 @@ Find all h264 main videos with eac3 audio in an mkv container:
 
 Finds all mkv h264 videos with width less than 1920
 
-`node index -x mkv -v.codec_name h264 -v.width "<1920" [PATH_TO_VIDEOS_FOLDER]`
+`node index -x mkv -v.codec_name h264 -v.width '<1920' [PATH_TO_VIDEOS_FOLDER]`
 
 Finds all mp4 h264 720p or higher videos
 
-`node index -x mp4 -v.codec_name h264 -v.height ">=720" [PATH_TO_VIDEOS_FOLDER]`
+`node index -x mp4 -v.codec_name h264 -v.height '>=720' [PATH_TO_VIDEOS_FOLDER]`
+
+Finds all mkv h264 videos that are not 720p
+
+`node index -x mkv -v.codec_name h264 -v.height '!720' [PATH_TO_VIDEOS_FOLDER]`
 
 Finds all mkv videos that was encoded with libmatroska
 
-`node index -x mkv -c.tags.encoder "~libmatroska" [PATH_TO_VIDEOS_FOLDER]`
+`node index -x mkv -c.tags.encoder '~libmatroska' [PATH_TO_VIDEOS_FOLDER]`
