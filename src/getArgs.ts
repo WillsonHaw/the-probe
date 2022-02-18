@@ -1,6 +1,4 @@
 import * as yargs from 'yargs';
-// import { properties } from './properties';
-// import { Stream } from './types/Stream';
 
 export default function getArgs() {
   return yargs

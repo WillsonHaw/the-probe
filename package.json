@@ -5,6 +5,12 @@
   "main": "index",
   "author": "Willson Haw",
   "license": "ISC",
+  "bin": {
+    "findvid": "./bin/index.js"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json"
+  },
   "dependencies": {
     "cli-progress": "^3.10.0",
     "colors": "^1.4.0",

@@ -1,4 +1,4 @@
-import os from 'os';
+import * as os from 'os';
 import * as colors from 'colors';
 import { exec as execFn } from 'child_process';
 import { SingleBar } from 'cli-progress';
