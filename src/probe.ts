@@ -1,3 +1,4 @@
+import os from 'os';
 import * as colors from 'colors';
 import { exec as execFn } from 'child_process';
 import { SingleBar } from 'cli-progress';
@@ -14,6 +15,12 @@ interface Matchers {
   audio?: Stream;
   subtitle?: Stream;
   container?: Container;
+}
+
+export interface ProbeOptions {
+  numProcesses?: number;
+  maxCount?: number;
+  onProbeResult?: (result: ProbeResult) => void
 }
 
 export interface ProbeResult {
@@ -123,7 +130,7 @@ async function probeFile(file: string, matchers: Matchers): Promise<ProbeResult 
     return probeHasResults ? {
       file,
       video: videoProbeResult,
-      audio: result.streams.filter(s => s.codec_type === 'audio').length,
+      audio: audioProbeResult,
       subtitle: subtitleProbeResult
     } : undefined;
   } catch (err) {
@@ -135,8 +142,7 @@ async function probeFile(file: string, matchers: Matchers): Promise<ProbeResult 
 export async function probe(
   files: string[],
   matchers: Matchers,
-  numProcesses: number,
-  maxCount = Infinity
+  { maxCount, numProcesses, onProbeResult }: ProbeOptions
 ): Promise<ProbeResult[]> {
   const bar = new SingleBar({
     format:
@@ -147,6 +153,19 @@ export async function probe(
   const results: ProbeResult[] = [];
   let foundCount = 0;
   let progress = 0;
+  let finalMaxCount = maxCount ?? Infinity;
+  let lastLoggedIndex = 0;
+
+  if (onProbeResult) {
+    bar.on('redraw-pre', () => {
+      while (lastLoggedIndex < results.length - 1) {
+        const result = results[lastLoggedIndex];
+
+        onProbeResult?.(result)
+        lastLoggedIndex++;
+      }
+    });
+  }
 
   bar.start(files.length, 0, { foundCount: 0 });
 
@@ -154,13 +173,13 @@ export async function probe(
     files.map((file) => async () => {
       bar.update(++progress, { foundCount });
 
-      if (foundCount >= maxCount) {
+      if (foundCount >= finalMaxCount) {
         return;
       }
 
       const result = await probeFile(file, matchers);
 
-      if (result && foundCount < maxCount) {
+      if (result && foundCount < finalMaxCount) {
         foundCount++;
 
         results.push(result);
@@ -168,7 +187,7 @@ export async function probe(
         bar.update(progress, { foundCount });
       }
     }),
-    numProcesses
+    numProcesses ?? os.cpus().length
   );
 
   bar.stop();

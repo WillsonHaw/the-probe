@@ -17,7 +17,7 @@ export async function main(): Promise<void> {
     extensions,
     container,
     out,
-  } = getArgs();
+  } = await getArgs();
 
   if (!video && !audio && !subtitle && !container) {
     console.error(
@@ -26,7 +26,13 @@ export async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const files = await getFiles(path[0], extensions.split(','));
+  process.on('SIGINT', function () {
+    // Move cursor to new line because the progress bar doesn't do it when interrupted
+    console.log("\n");
+    process.exit();
+  });
+
+  const files = await getFiles(path[0] as string, extensions.split(','));
 
   console.log(
     `Found ${files.length} files that match provided extensions: ${extensions}`
@@ -41,33 +47,33 @@ export async function main(): Promise<void> {
       subtitle: subtitle as Stream,
       container: container as Container,
     },
-    processes,
-    maxResults
+    {
+      numProcesses: processes,
+      maxCount: maxResults,
+      onProbeResult: (result) => {
+        let resultString = `${result.file}\n`;
+
+        if ((result.audio ?? 0) > 1) {
+          resultString += `  matched ${result.audio} audio streams\n`
+        }
+
+        if ((result.video ?? 0) > 1) {
+          resultString += `  matched ${result.video} video streams\n`
+        }
+
+        if ((result.subtitle ?? 0) > 1) {
+          resultString += `  matched ${result.subtitle} subtitle streams\n`
+        }
+
+        if (out) {
+          writeFileSync(out, resultString, 'utf8');
+        } else {
+          process.stdout.write("\r\x1b[K")
+          process.stdout.write(resultString);
+        }
+      }
+    }
   );
 
-  console.log(`Found ${colors.green(results.length.toString())} results`);
-
-  let resultString = results.reduce((acc, result) => {
-    acc += `${result.file}\n`;
-
-    if (result.audio) {
-      acc += `  ${result.audio} matching audio stream${result.audio > 1 ? 's' : ''}\n`
-    }
-
-    if (result.video) {
-      acc += `  ${result.video} matching video stream${result.video > 1 ? 's' : ''}\n`
-    }
-
-    if (result.subtitle) {
-      acc += `  ${result.subtitle} matching subtitle stream${result.subtitle > 1 ? 's' : ''}\n`
-    }
-
-    return acc;
-  }, '');
-
-  if (out) {
-    writeFileSync(out, resultString, 'utf8');
-  } else {
-    console.log('\n', resultString);
-  }
+  process.stdout.write(`\n\nFound ${colors.green(results.length.toString())} results\n`);
 }
